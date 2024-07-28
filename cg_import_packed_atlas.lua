@@ -669,7 +669,7 @@ else
     }:button{
         id = "Ok",
         text = "Ok",
-        focus = true,
+        focus = json_filepath ~= "", --defaults to first (file picker) if false
         onclick = function()
             build(dlg.data[PICKER])
             dlg:close()
