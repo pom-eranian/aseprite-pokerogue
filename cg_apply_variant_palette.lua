@@ -479,9 +479,7 @@ local function color_to_hex(c)
     return tohex(c.red) .. tohex(c.green) .. tohex(c.blue)
 end
 
-local function apply_variant_palette(filepath, palette_table)
-    local image = app.image
-    local sprite = app.sprite
+local function apply_variant_palette(sprite, image, filepath, palette_table)
     local new_sprite = Sprite(sprite.width, sprite.height)
     new_sprite.filename = app.fs.fileTitle(filepath)
     new_sprite:setPalette(sprite.palettes[1])
@@ -499,7 +497,7 @@ local function apply_variant_palette(filepath, palette_table)
     draw_section(image, new_sprite.cels[1].image, {w=sprite.width, h=sprite.height}, new_sprite.palettes[1])
 end
 
-local function build(filepath, slider)
+local function build(filepath)
     local f = io.open(filepath, "r+"):read('a')
     local jsondata = json.decode(f)
 
@@ -510,13 +508,14 @@ local function build(filepath, slider)
         return 1
     end
 
+    local sprite = app.sprite
+    local image = app.image
+
     for k, v in pairs(jsondata) do
-        if k == tostring(slider) then
-            apply_variant_palette(app.fs.fileTitle(string.sub(filepath, 1, -6) .. "_" .. k), v)
-            return
+        if k ~= 3 then
+            apply_variant_palette(sprite, image, app.fs.fileTitle(string.sub(filepath, 1, -6) .. "_" .. k), v)
         end
     end
-    print("Variant index " .. slider .. " not found in " .. filepath)
 end
 
 local JKEY = "json"
@@ -532,7 +531,6 @@ else
     local dlg = Dialog()
 
     local PICKER = "picker"
-    local VARIANT = "variant"
     local sprite = app.sprite
 
     if sprite == nil then
@@ -557,18 +555,12 @@ else
         open = true,
         filename = json_filepath,
         filetypes = {"json"}
-    }:slider{
-        id = VARIANT,
-        label = "variant index (0-2)",
-        min = 0,
-        max = 2,
-        value = 1,
-        focus = true
     }:button{
         id = "Ok",
         text = "Ok",
+        focus = true,
         onclick = function()
-            build(dlg.data[PICKER], dlg.data[VARIANT])
+            build(dlg.data[PICKER])
             dlg:close()
         end
     }:show()
