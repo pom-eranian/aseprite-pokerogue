@@ -1,52 +1,54 @@
 local json = dofile('json.lua')
 
 --[[
-    jest_import_packed_atlas
-    Useful in case you lose your ASE file and only have the output .png & .json files
-    This script IMPORTS packed sprites, e,g texture atlases, or exports from aseprite, back into their original form.
+    cg_apply_variant_palette
+    This script is designed for PokeRogue's variant palette engine.
+    https://github.com/pagefaultgames/pokerogue
+    It takes a non-shiny Pokemon's spritesheet, stored in the same file directory as it is on the above  repository, and opens that Pokemon's variant spritesheets.
+    When those variants are stored as images, it opens them directly, and when they are stored as palette maps, it applies that map to a copy of the original sheet.
+
     Just open the png file up as the current tab, select the corresponding json and done.
     !!WARNING: PROBABLY DOES NOT SUPPORT ROTATED TEXTURE ATLASES!!
-    It will also import tags if they exist in the json file
 
-    This script also has CLI support so you can mass convert your texture atlases:
+    I'm not jest, so the following probably isn't true. It might though!
+
+    This script might also have CLI support so you can mass convert your texture atlases:
     NOTE THAT PATHS MUST BE ABSOLUTE, EG:
-    WARNING! IT WILL SAVE IN THE SAME DIRECTORY AS THE PNG FILE! Becareful if you already have an .ase file in the same directory with the same name as the .png
+    WARNING! IT WILL SAVE IN THE SAME DIRECTORY AS THE PNG FILE! Be careful if you already have an .ase file in the same directory with the same name as the .png
     '--save-as' flag DOES NOT WORK and I'm too lazy to add an export script-param var
     png & json paths don't have to be absolute but script path has to, at least these are my problems. Use all absolute paths if you are having issues
     aseprite.exe <C:\SPRITE.png> --script-param json="C:\SPRITE.json" --script "C:\jest_import_packed_atlas.lua" --batch
 
-    Your .json file can be either in array form, e.g:
-
-{"frames": [
-    {
-        "filename": "Green Flash"
-        "frame": {"x":1,"y":1,"w":31,"h":301},
-        "rotated": false,
-        "trimmed": false,
-        "spriteSourceSize": {"x":0,"y":0,"w":31,"h":301},
-        "sourceSize": {"w":31,"h":301
-    }
-]}
-
-or hash form:
-
-{"frames": {
-    "Green Flash":
-    {
-        "frame": {"x":1,"y":1,"w":31,"h":301},
-        "rotated": false,
-        "trimmed": false,
-        "spriteSourceSize": {"x":0,"y":0,"w":31,"h":301},
-        "sourceSize": {"w":31,"h":301}
-}}}
-
-    If you see all white colors, it means you didn't have the packed sprite selected as the current tab when running this script
+    A palette map .json file should probably look something like this:
+{
+	"1": {
+		"983a29": "6231a5",
+		"f07944": "ab6ce0",
+		"101010": "101010",
+		"bf5633": "6231a5",
+		"987028": "061530",
+		"f7e77a": "b55390",
+		"e8b848": "872b59",
+		"56301f": "471b70",
+		"af7045": "6231a5",
+		"8d452e": "c5b3ca",
+		"969696": "262424",
+		"414141": "404040",
+		"f8f8f8": "f7e4fc",
+		"d8d8c8": "c093c3",
+		"5c5c5c": "262424",
+		"000000": "101010"
+	}
+}
 
     Check out jest_import_existing_tags(https://github.com/jestarray/aseprite-scripts/blob/master/jest_import_existing_tags.lua) if your json file also has meta data animation tags
+
   Credits:
     json decoding by rxi - https://github.com/rxi/json.lua
 
-    script by jest(https://github.com/jestarray/aseprite-scripts) - for aseprite versions > 1.2.10
+    components and UI by jest(https://github.com/jestarray/aseprite-scripts) - for aseprite versions > 1.2.10
+
+    adapted from jest's jest_import_packed_atlas.lua by chaosgrimmon for PokeRogue
 
     Public domain, do whatever you want
 ]]
@@ -152,7 +154,7 @@ end
 
 local function apply_variant_palette(sprite, image, filepath, palette_table)
     local new_sprite = Sprite(sprite.width, sprite.height)
-    new_sprite.filename = app.fs.fileTitle(filepath)
+    new_sprite.filename = filepath
     new_sprite:setPalette(sprite.palettes[1])
 
     for i=0,#new_sprite.palettes[1]-1 do
@@ -183,9 +185,7 @@ local function build(filepath)
     local image = app.image
 
     for k, v in pairs(jsondata) do
-        if k ~= 3 then
-            apply_variant_palette(sprite, image, app.fs.fileTitle(string.sub(filepath, 1, -6) .. "_" .. k), v)
-        end
+        apply_variant_palette(sprite, image, filepath:sub(1, -6) .. "_" .. (k + 1) .. ".png", v)
     end
 end
 
@@ -209,12 +209,19 @@ else
         return 1
     end
 
-    -- tries to guess that the png & json are in the same directory
     local json_filepath = app.fs.filePathAndTitle(sprite.filename)
-    json_filepath = string.gsub(json_filepath, "pokemon", "pokemon" .. app.fs.pathSeparator .. "variant")  .. ".json"
+    json_filepath = json_filepath:gsub("pokemon", "pokemon" .. app.fs.pathSeparator .. "variant") .. ".json"
 
-    local exists_in_same_dir = app.fs.isFile(json_filepath)
-    if exists_in_same_dir == false then
+    -- if any variant sprites exist in the expected location, they are immediately opened
+    for i=1,3 do
+        local var_sprite_filepath = json_filepath:sub(1,-6) .. "_" .. i .. ".png"
+        print(var_sprite_filepath)
+        if app.fs.isFile(var_sprite_filepath) then
+            app.open(var_sprite_filepath)
+        end
+    end
+
+    if app.fs.isFile(json_filepath) == false then  -- search in variant folder counterpart
         json_filepath = "" -- not in same dir, look for it yourself
     end
 
