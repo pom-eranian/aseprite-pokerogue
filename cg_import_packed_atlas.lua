@@ -1,16 +1,18 @@
 local json = dofile('json.lua')
 
 --[[
-    jest_import_packed_atlas
+    cg_import_packed_atlas
     Useful in case you lose your ASE file and only have the output .png & .json files
     This script IMPORTS packed sprites, e,g texture atlases, or exports from aseprite, back into their original form.
+    Also colours and replaces cel userdata to find and mark repeated uses of each sprite on the atlas.
+
     Just open the png file up as the current tab, select the corresponding json and done.
     !!WARNING: PROBABLY DOES NOT SUPPORT ROTATED TEXTURE ATLASES!!
     It will also import tags if they exist in the json file
 
     This script also has CLI support so you can mass convert your texture atlases:
     NOTE THAT PATHS MUST BE ABSOLUTE, EG:
-    WARNING! IT WILL SAVE IN THE SAME DIRECTORY AS THE PNG FILE! Becareful if you already have an .ase file in the same directory with the same name as the .png
+    WARNING! IT WILL SAVE IN THE SAME DIRECTORY AS THE PNG FILE! Be careful if you already have an .ase file in the same directory with the same name as the .png
     '--save-as' flag DOES NOT WORK and I'm too lazy to add an export script-param var
     png & json paths don't have to be absolute but script path has to, at least these are my problems. Use all absolute paths if you are having issues
     aseprite.exe <C:\SPRITE.png> --script-param json="C:\SPRITE.json" --script "C:\jest_import_packed_atlas.lua" --batch
@@ -40,6 +42,44 @@ or hash form:
         "sourceSize": {"w":31,"h":301}
 }}}
 
+
+and also whatever legacy TexturePacker format PokeRogue uses:
+
+{
+	"textures": [
+		{
+			"image": "6-mega-x_2.png",
+			"format": "RGBA8888",
+			"size": {
+				"w": 238,
+				"h": 238
+			},
+			"scale": 1,
+			"frames": [
+				{
+					"filename": "0001.png",
+					"rotated": false,
+					"trimmed": false,
+					"sourceSize": {
+						"w": 89,
+						"h": 80
+					},
+					"spriteSourceSize": {
+						"x": 0,
+						"y": 0,
+						"w": 89,
+						"h": 80
+					},
+					"frame": {
+						"x": 0,
+						"y": 0,
+						"w": 89,
+						"h": 80
+					}
+				}
+		}
+}
+
     If you see all white colors, it means you didn't have the packed sprite selected as the current tab when running this script
 
     Check out jest_import_existing_tags(https://github.com/jestarray/aseprite-scripts/blob/master/jest_import_existing_tags.lua) if your json file also has meta data animation tags
@@ -47,6 +87,10 @@ or hash form:
     json decoding by rxi - https://github.com/rxi/json.lua
 
     script by jest(https://github.com/jestarray/aseprite-scripts) - for aseprite versions > 1.2.10
+
+    TexturePacker parsing by cameranian - https://github.com/pom-eranian/aseprite-pokerogue
+
+    cel details by chaosgrimmon
 
     Public domain, do whatever you want
 ]]
@@ -178,7 +222,7 @@ local function build(filepath)
 
     local og_size = jsondata.frames[1].sourceSize
     local new_sprite = Sprite(og_size.w, og_size.h)
-    new_sprite.filename = app.fs.fileTitle(filepath);
+    new_sprite.filename = app.fs.filePathAndTitle(sprite.filename);
     new_sprite:setPalette(sprite.palettes[1])
 
     local frame = new_sprite.frames[1]
@@ -324,9 +368,14 @@ else
 
     -- tries to guess that the png & json are in the same directory
     local json_filepath = app.fs.filePathAndTitle(sprite.filename) .. ".json"
-    local exists_in_same_dir = app.fs.isFile(json_filepath)
-    if exists_in_same_dir == false then
-        json_filepath = "" -- not in same dir, look for it yourself
+
+    if app.fs.isFile(json_filepath) == false then
+        -- PokeRogue specific, tries to find the non-variant base sprite's json
+        if json_filepath:find("variant") ~= nil then
+            json_filepath = json_filepath:gsub("pokemon" .. app.fs.pathSeparator .. "variant", "pokemon"):sub(1, -8) .. ".json"
+        else
+            json_filepath = "" -- not in same dir, look for it yourself
+        end
     end
 
     dlg:file{
