@@ -48,6 +48,8 @@ local json = dofile('json.lua')
 
     components and UI by jest(https://github.com/jestarray/aseprite-scripts) - for aseprite versions > 1.2.10
 
+    color functions by Kacper Woźniak - https://thkaspar.itch.io/theme-preferences
+
     adapted from jest's jest_import_packed_atlas.lua by chaosgrimmon for PokeRogue
 
     Public domain, do whatever you want
@@ -143,13 +145,8 @@ local function hex_to_color(s)
     return Color{ r=tonumber(s:sub(1,2), 16), g=tonumber(s:sub(3,4), 16), b=tonumber(s:sub(5,6), 16), a=255 }
 end
 
-local hexadec = {'0', '1', '2', '3', '4', '5' , '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
-local function tohex(n)
-    return hexadec[(n // 16) + 1] .. hexadec[(n % 16) + 1]
-end
-
 local function color_to_hex(c)
-    return tohex(c.red) .. tohex(c.green) .. tohex(c.blue)
+    return string.format("%02x%02x%02x", c.red, c.green, c.blue)
 end
 
 local function apply_variant_palette(sprite, image, filepath, palette_table)
@@ -215,7 +212,6 @@ else
     -- if any variant sprites exist in the expected location, they are immediately opened
     for i=1,3 do
         local var_sprite_filepath = json_filepath:sub(1,-6) .. "_" .. i .. ".png"
-        print(var_sprite_filepath)
         if app.fs.isFile(var_sprite_filepath) then
             app.open(var_sprite_filepath)
         end
