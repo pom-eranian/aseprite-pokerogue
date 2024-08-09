@@ -72,18 +72,14 @@ local function draw_section(src_img, dest_img, src_rect, palette)
         for x = 0, frame.w - 1, 1 do
             local color_or_index = src_img:getPixel(x, y)
             local color;
-            if src_img.colorMode == ColorMode.INDEXED then
-                -- fixes greenish artifacts when importing from an indexed file: https://discord.com/channels/324979738533822464/324979738533822464/975147445564604416
-                -- because indexed sprites have a special index as the transparent color: https://www.aseprite.org/docs/color-mode/#indexed
-                if color_or_index ~= src_img.spec.transparentColor then
-                    color = palette:getColor(color_or_index)
-                else
-                    color = Color {r = 0, g = 0, b = 0, a = 0}
-                end
+            -- fixes greenish artifacts when importing from an indexed file: https://discord.com/channels/324979738533822464/324979738533822464/975147445564604416
+            -- because indexed sprites have a special index as the transparent color: https://www.aseprite.org/docs/color-mode/#indexed
+            -- since it's indexed, grab the index color from the palette
+            if color_or_index ~= src_img.spec.transparentColor then
+                color = palette:getColor(color_or_index)
             else
-                color = color_or_index
+                color = Color {r = 0, g = 0, b = 0, a = 0}
             end
-            -- DEPENDS ON THE COLOR MODE, MAKE SURE ITS NOT INDEXED, if indexed, grab the index color from the palette, otherwise it is the color
             dest_img:drawPixel(x, y, color)
         end
     end
@@ -167,7 +163,7 @@ local function apply_variant_palette(sprite, image, filepath, palette_table)
     draw_section(image, new_sprite.cels[1].image, {w=sprite.width, h=sprite.height}, new_sprite.palettes[1])
 end
 
-local function build(filepath)
+local function build(filepath, sprite, image)
     local f = io.open(filepath, "r+"):read('a')
     local jsondata = json.decode(f)
 
@@ -177,9 +173,6 @@ local function build(filepath)
 
         return 1
     end
-
-    local sprite = app.sprite
-    local image = app.image
 
     for k, v in pairs(jsondata) do
         apply_variant_palette(sprite, image, filepath:sub(1, -6) .. "_" .. (k + 1) .. ".png", v)
@@ -199,7 +192,13 @@ else
     local dlg = Dialog()
 
     local PICKER = "picker"
+
+    -- colour replacement only works on INDEXED Sprites
+    if app.sprite.colorMode ~= ColorMode.INDEXED then
+        app.command.ChangePixelFormat { format = "indexed" }
+    end -- needs to be before app.sprite/image caching
     local sprite = app.sprite
+    local image = app.image
 
     if sprite == nil then
         print("you are not viewing a sprite on the active tab")
@@ -234,7 +233,7 @@ else
         text = "Ok",
         focus = json_filepath ~= "", --defaults to first (file picker) if false
         onclick = function()
-            build(dlg.data[PICKER])
+            build(dlg.data[PICKER], sprite, image)
             dlg:close()
         end
     }:show()
