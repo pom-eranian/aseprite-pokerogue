@@ -7,6 +7,12 @@
 
     Attempts to use the Title of the current active Sprite when possible for convenience, though it has full Dialog:file capabilities.
 
+
+  Credits:
+    script by chaosgrimmon
+
+    Public domain, do whatever you want
+
 ]]
 
 local SEP = app.fs.pathSeparator
