@@ -220,8 +220,18 @@ local function build(filepath)
     local image = app.image
     local sprite = app.sprite
 
-    local og_size = jsondata.frames[1].sourceSize
-    local new_sprite = Sprite(og_size.w, og_size.h)
+    -- predetermine largest frame of animation as canvas size
+    local og_width = 0
+    local og_height = 0
+    for index, aframe in pairs(jsondata.frames) do
+        if jsondata.frames[index].sourceSize.w > og_width then
+            og_width = jsondata.frames[index].sourceSize.w
+        end
+        if jsondata.frames[index].sourceSize.h > og_height then
+            og_height = jsondata.frames[index].sourceSize.h
+        end
+    end
+    local new_sprite = Sprite(og_width, og_height)
     new_sprite.filename = app.fs.filePathAndTitle(sprite.filename);
     new_sprite:setPalette(sprite.palettes[1])
 
@@ -276,8 +286,8 @@ local function build(filepath)
         local dest_img = dest_cel.image
 
         -- hash is the topleftmost pixel of each sprite, assumes no partial spriteage
-        local frame_src_hash = aframe.frame['x'] .. ',' .. aframe.frame['y']
-        local frame_data = ": { x: " .. aframe.frame['x'] .. ", y: " .. aframe.frame['y'] .. ", w: " .. aframe.frame['w'] .. ", h: " .. aframe.frame['h'] .. ' }'
+        local frame_src_hash = aframe.frame.x .. ',' .. aframe.frame.y
+        local frame_data = ": { x: " .. aframe.frame.x .. ", y: " .. aframe.frame.y .. ", w: " .. aframe.frame.w .. ", h: " .. aframe.frame.h .. ' }'
 
         if is_txtpacker then
             frame = new_sprite:newFrame(index)
@@ -356,10 +366,10 @@ if from_cli_json_path ~= nil then
     local name = app.fs.filePathAndTitle(from_cli_json_path) .. ".ase"
     app.command.saveFileAs {["filename"] = name, ["filename-format"] = ".ase"}
 else
-    local dlg = Dialog()
+    local dlg = Dialog("Import Packed Atlas")
 
     local PICKER = "picker"
-    local sprite = app.activeSprite
+    local sprite = app.sprite
 
     if sprite == nil then
         print("you are not viewing a sprite on the active tab")
@@ -380,7 +390,7 @@ else
 
     dlg:file{
         id = PICKER,
-        label = "select animation data file(json)",
+        label = "select animation data file (json)",
         title = "animimation tag importer",
         load = true,
         open = true,
