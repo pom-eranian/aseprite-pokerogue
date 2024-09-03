@@ -50,16 +50,24 @@ local function sort_order()
     app.sprite:setPalette(palette)
 end
 
-if app.sprite == nil then
-    print("you are not viewing a sprite on the active tab")
-    return 1
+local cg_sort_by_order = { _version = "0.1.2" }
+
+function cg_sort_by_order.main()
+    if app.sprite == nil then
+        print("you are not viewing a sprite on the active tab")
+        return 1
+    end
+
+    local color_mode = app.sprite.colorMode
+    app.command.ChangePixelFormat{ format = "rgb" }
+
+    sort_order()
+
+    if color_mode == ColorMode.INDEXED then
+        app.command.ChangePixelFormat{ format = "indexed" }
+    end
 end
 
-local color_mode = app.sprite.colorMode
-app.command.ChangePixelFormat { format = "rgb" }
+cg_sort_by_order.main()
 
-sort_order()
-
-if color_mode == ColorMode.INDEXED then
-    app.command.ChangePixelFormat { format = "indexed" }
-end
+return cg_sort_by_order
