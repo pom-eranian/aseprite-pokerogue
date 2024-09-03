@@ -189,7 +189,7 @@ if from_cli_json_path ~= nil then
     local name = app.fs.filePathAndTitle(from_cli_json_path) .. ".ase"
     app.command.saveFileAs {["filename"] = name, ["filename-format"] = ".ase"}
 else
-    local dlg = Dialog()
+    local dlg = Dialog("Open Variants")
 
     local PICKER = "picker"
 
