@@ -21,9 +21,11 @@ local function build(source, width, height)
     local sprite = Sprite(width, height)
     sprite.filename = app.fs.fileName(source)
     sprite:setPalette(Palette(1))
+    local c = 0  -- necessary for when non-pngs are in the same folder
 
     for i,filename in pairs(app.fs.listFiles(source)) do
         if app.fs.fileExtension(filename) == "png" then  -- hardcoded only .pngs
+            c = c + 1
             local image = Image{ fromFile=app.fs.joinPath(source, filename) }
             if image.colorMode ~= ColorMode.RGB then
                 -- for whatever reason, a separate Sprite IS mandatory to
@@ -35,10 +37,13 @@ local function build(source, width, height)
                 image = Image(temp_sprite)
                 temp_sprite:close()
             end
-            local cel = sprite:newCel(app.layer, sprite:newEmptyFrame(i), image)
-            local tag = sprite:newTag(i-1,i)  -- apparently Cel slices are zero-indexed
+            local cel = sprite:newCel(app.layer, sprite:newEmptyFrame(c), image)
+            local tag = sprite:newTag(c,c)
             tag.name = app.fs.fileTitle(filename)
         end
+    end
+    for i,tag in ipairs(sprite.tags) do  -- fix tag endpoints
+        tag.toFrame = tag.fromFrame
     end
     -- delete tailing empty Frame from initial Sprite call
     sprite:deleteFrame(#sprite.frames)
@@ -71,11 +76,19 @@ dlg:file{
         focus = app.sprite == nil,  -- focus if source is empty
         filetypes = {},
         onchange = function ()
-            if app.fs.isFile(dlg.data[SOURCE]) then
+            if app.fs.isFile(dlg.data[SOURCE]) then  -- select folder instead
+                local sprite = Sprite{ fromFile = dlg.data[SOURCE]}
                 dlg:modify{
+                    id = WIDTH,
+                    text = sprite.width
+                }:modify{
+                    id = HEIGHT,
+                    text = sprite.height
+                }:modify{
                     id = SOURCE,
                     filename = app.fs.filePath(dlg.data[SOURCE])
                 }
+                sprite:close()
             end
         end
     }:number{
